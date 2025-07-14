@@ -1,9 +1,31 @@
 import os
 import pandas as pd
 import yfinance as yf
+from sklearn.preprocessing import MinMaxScaler
+import torch
+
+
+import numpy as np
+
+def create_sequences(data, window_size=30):
+    X, y = [], []
+    for i in range(window_size, len(data)):
+        X.append(data[i - window_size:i])
+        y.append(data[i])  
+    return np.array(X), np.array(y)
 
 
 def load_btc_data(train_start, train_end, test_start, test_end, save_csv=True):
+    '''
+    start/end params only work when data is downloading, not loading
+    :param train_start:
+    :param train_end:
+    :param test_start:
+    :param test_end:
+    :param save_csv:
+    :return:
+    '''
+
     train_path = "./data/btc_train_data.csv"
     test_path = "./data/btc_test_data.csv"
 
@@ -28,7 +50,26 @@ def load_btc_data(train_start, train_end, test_start, test_end, save_csv=True):
 
     return train_data, test_data
 
-if __name__ == "__main__":
+def get_all():
     train_data, test_data = load_btc_data("2015-01-01", "2023-01-01",
                                           "2023-01-02", "2024-01-01")
-    print(train_data)
+
+    features = ["Close"]  # lub ["Open", "High", "Low", "Close", "Volume"]
+    train = train_data[features]
+    test = test_data[features]
+
+    scaler = MinMaxScaler()
+    train_scaled = scaler.fit_transform(train)
+    test_scaled = scaler.transform(test)
+
+    x_train, y_train = create_sequences(train_scaled)
+    x_test, y_test = create_sequences(test_scaled)
+
+    print(x_train, y_train)
+
+    X_trainT = torch.tensor(x_train, dtype=torch.float32)
+    y_trainT = torch.tensor(y_train, dtype=torch.float32)
+    X_testT = torch.tensor(x_test, dtype=torch.float32)
+    y_testT = torch.tensor(y_test, dtype=torch.float32)
+
+    return X_trainT, y_trainT, X_testT, y_testT, scaler
